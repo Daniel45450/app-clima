@@ -1,10 +1,12 @@
+const fs = require('fs');
 const axios = require('axios');
 
 class Busquedas {
-    historial = "";
+    historial = [];
+    dbPath = './db/database.json';
 
     constructor() {
-
+        this.leerDB();
     }
 
     get paramsMapBox () {
@@ -15,14 +17,21 @@ class Busquedas {
                 }
     }
 
-    paramsWheather(lat, lon) {
+    get paramsWeather() {
         return {
-            lat,
-            lon,
             'appid': process.env.OPENWHEATHER_KEY,
             'units': 'metric',
             'lang': 'es'
         }
+    }
+
+    get historialCapitalizado() {
+        return this.historial.map(lugar => {
+            let palabras = lugar.split(' ');
+            palabras = palabras.map(p => p[0].toUpperCase() + p.substring(1));
+
+            return palabras.join(' ');
+        })
     }
 
     async ciudad(lugar = '') {
@@ -44,23 +53,54 @@ class Busquedas {
         }
     }
 
-    async lugarClima(lat, lon) {
+    async lugarClima(lat, lon) {    
         try {
             const instance = axios.create({
                 baseURL: `https://api.openweathermap.org/data/2.5/weather`,
-                params: this.paramsWheather(lat, lon)
+                params: { ...this.paramsWeather, lat, lon} 
             });
 
             const resp = await instance.get();
+            const {weather, main} = resp.data;
             return {
-                desc: resp.data.weather[0].description,
-                temp: resp.data.main.temp,
-                min: resp.data.main.temp_min,
-                max: resp.data.main.temp_max,
+                desc: weather[0].description,
+                temp: main.temp,
+                min: main.temp_min,
+                max: main.temp_max,
             }
         } catch (error) {
             console.log(error);
         }
+    }
+
+    agregarHistorial(lugar = "") {
+        //Prevenir duplicados
+        if(this.historial.includes(lugar.toLocaleLowerCase() ) ) {
+            return;
+        }
+        this.historial = this.historial.splice(0, 5);
+        this.historial.unshift(lugar.toLocaleLowerCase());
+
+        //Grabar en db
+
+        this.guardarDB();
+    }
+
+    guardarDB() {
+        const payload = {
+            historial: this.historial
+        }
+
+        fs.writeFileSync(this.dbPath, JSON.stringify(payload));
+    }
+
+    leerDB() {
+        if(!fs.existsSync(this.dbPath)) return;
+
+        const info = fs.readFileSync(this.dbPath, {encoding: 'utf-8'});
+        const data = JSON.parse(info);
+
+        this.historial = data.historial;
     }
 
 }

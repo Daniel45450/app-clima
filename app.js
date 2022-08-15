@@ -8,7 +8,6 @@ const main = async() => {
 
     let opcion;
     const busquedas = new Busquedas();
-
     do {
         opcion = await inquirerMenu();
         switch (opcion) {
@@ -21,7 +20,11 @@ const main = async() => {
 
                 //Seleccionar lugar
                 const id = await listarLugares(lugares);
+                if(id === '0') continue;
                 const lugarSeleccionado = lugares.find(l => l.id === id);
+                
+                //guardar en db
+                busquedas.agregarHistorial(lugarSeleccionado.nombre);
 
                 //Clima
                 const climaLugar = await busquedas.lugarClima(lugarSeleccionado.lat, lugarSeleccionado.lng);
@@ -36,7 +39,10 @@ const main = async() => {
                 console.log('Actual: ', `${climaLugar.desc}`.yellow);
             break;
             case 2:
-                console.log(opcion);    
+                busquedas.historialCapitalizado.forEach((lugar, i) => {
+                    const idx = `${i + 1}.`.green;
+                    console.log(idx, lugar);
+                })   
             break;
         }
 
